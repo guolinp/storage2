@@ -1,1 +1,1 @@
-# storage2
+this is a mini-storage project
