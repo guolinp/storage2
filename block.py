@@ -49,6 +49,10 @@ def dump_device_tree(luns):
     for _, lun in luns.items():
         lun.dump_device_tree()
 
+def get_default_lun():
+    luns = build_device_tree('system.json')
+    return luns['LUN0']
+
 if __name__ == "__main__":
     luns = build_device_tree('system.json')
     dump_device_tree(luns)

@@ -41,5 +41,9 @@ class DeviceAccessError(StorgeError):
     pass
 
 
+class DeviceNoEnoughSpaceError(StorgeError):
+    pass
+
+
 class FunctionalNotImplementError(StorgeError):
     pass

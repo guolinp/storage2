@@ -2,7 +2,7 @@
 
 
 DISK_NUM=10
-DISK_SIZE=1024 #KB
+DISK_SIZE=$((32*1024)) #KB
 
 for i in `seq 0 $((DISK_NUM-1))`
 do
