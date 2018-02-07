@@ -1,0 +1,80 @@
+{
+  "luns": [
+    {
+      "name": "LUN0",
+      "raids": [
+        "RAID0"
+      ]
+    },
+    {
+      "name": "LUN1",
+      "raids": [
+        "RAID1"
+      ]
+    }
+  ],
+  "raids": [
+    {
+      "name": "RAID0",
+      "disks": [
+        "DISK_0",
+        "DISK_1",
+        "DISK_2",
+        "DISK_3",
+        "DISK_4"
+      ]
+    },
+    {
+      "name": "RAID1",
+      "disks": [
+        "DISK_5",
+        "DISK_6",
+        "DISK_7",
+        "DISK_8",
+        "DISK_9"
+      ]
+    }
+  ],
+  "disks": [
+    {
+      "name": "DISK_0",
+      "pathname": "DISK_0"
+    },
+    {
+      "name": "DISK_1",
+      "pathname": "DISK_1"
+    },
+    {
+      "name": "DISK_2",
+      "pathname": "DISK_2"
+    },
+    {
+      "name": "DISK_3",
+      "pathname": "DISK_3"
+    },
+    {
+      "name": "DISK_4",
+      "pathname": "DISK_4"
+    },
+    {
+      "name": "DISK_5",
+      "pathname": "DISK_5"
+    },
+    {
+      "name": "DISK_6",
+      "pathname": "DISK_6"
+    },
+    {
+      "name": "DISK_7",
+      "pathname": "DISK_7"
+    },
+    {
+      "name": "DISK_8",
+      "pathname": "DISK_8"
+    },
+    {
+      "name": "DISK_9",
+      "pathname": "DISK_9"
+    }
+  ]
+}
