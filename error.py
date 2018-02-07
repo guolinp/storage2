@@ -7,6 +7,7 @@ err_invalid_argument = 1024
 err_out_of_range = 1025
 err_read_data_fail = 1025
 err_write_data_fail = 1027
+err_not_implement = 1028
 
 # Error helper functions
 
@@ -46,4 +47,8 @@ class DeviceNoEnoughSpaceError(StorgeError):
 
 
 class FunctionalNotImplementError(StorgeError):
+    pass
+
+
+class BadSuperBlockError(StorgeError):
     pass

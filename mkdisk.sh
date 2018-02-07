@@ -10,6 +10,7 @@ do
     if [ ! -f $DISK_NAME ]; then
         echo create disk : $DISK_NAME
         dd if=/dev/zero of=$DISK_NAME bs=1024 count=$DISK_SIZE
+        #dd if=/dev/zero bs=1024 count=$DISK_SIZE | tr '\000' '\377' > $DISK_NAME
     else
        echo disk $DISK_NAME exists
     fi
