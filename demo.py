@@ -8,7 +8,8 @@ from lun import Lun
 disks = []
 for i in range(10):
     disk_name = 'DISK_%d' % i
-    disks.append(FileDisk(disk_name))
+    path_name = 'DISK_%d' % i
+    disks.append(FileDisk(disk_name, path_name))
 
 raids = []
 for i in range(2):
@@ -26,10 +27,9 @@ for i in range(2):
 
 lun.dump_device_tree()
 
-test_string = 'x' * 1024 * 1024 * 4 #4M
-lun.write(test_string, 1024*512)
-result, read_string = lun.read(1024*512, len(test_string))
-print 'write length: %d' % len(test_string)
-print 'result: %d' % result
-print 'read length: %d' % len(read_string)
-
+test_string = 'x' * 1024 * 1024 * 4  # 4M
+lun.write(test_string, 1024 * 512)
+result, read_string = lun.read(1024 * 512, len(test_string))
+print('write length: %d' % len(test_string))
+print('read result: %d' % result)
+print('read length: %d' % len(read_string))

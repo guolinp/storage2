@@ -13,5 +13,6 @@ class Raid(Device):
 
 
 class RaidX(Raid):
+
     '''Not a real RAID, just combine some disks to a virtual disk'''
     pass

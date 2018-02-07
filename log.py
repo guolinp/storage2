@@ -2,6 +2,7 @@
 
 import logging
 
+
 class Logger(object):
     _logger = None
 
@@ -13,7 +14,8 @@ class Logger(object):
         logger = logging.getLogger('Logger')
         logger.setLevel(logging.DEBUG)
 
-        formatter = logging.Formatter('%(asctime)s [%(filename)s,%(lineno)d] - %(name)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter(
+            '%(asctime)s [%(filename)s,%(lineno)d] - %(name)s - %(levelname)s - %(message)s')
 
         file_handle = logging.FileHandler(filename)
         file_handle.setLevel(logging.DEBUG)
@@ -25,7 +27,7 @@ class Logger(object):
             console_handle.setLevel(logging.DEBUG)
             console_handle.setFormatter(formatter)
             logger.addHandler(console_handle)
-            
+
         cls._logger = logger
 
         return cls._logger

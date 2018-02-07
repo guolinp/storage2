@@ -6,9 +6,11 @@ from extent import Extent
 
 
 class Device(Storage):
-    '''device framework'''
+
+    '''device base class'''
+
     def __init__(self, name):
-        Storage.__init__(self)
+        super(Device, self).__init__()
         self._name = name
         self._size = 0
         self._parent = None
@@ -21,6 +23,10 @@ class Device(Storage):
     @property
     def size(self):
         return self._size
+
+    @property
+    def info(self):
+        return ''
 
     @property
     def parent(self):
@@ -88,9 +94,11 @@ class Device(Storage):
 
     # the read/write is a default behavior, sub-class may override them.
     # it considers that all the children combine a virtual device,
-    # they are sharing a liner device space.
+    # they are sharing a linear address space.
     def read(self, offset, length):
-        self.logger.debug('start read on %s, offset %d, length %d' % (self._name, offset, length))
+        self.logger.debug('start read on %s, offset %d, length %d' %
+                          (self.name, offset, length))
+
         if not self._is_valid_range(offset, length):
             return err_invalid_argument, None
 
@@ -104,7 +112,8 @@ class Device(Storage):
         return result, ''.join(data)
 
     def write(self, data, offset):
-        self.logger.debug('start write on %s: offset %d, length %d' % (self._name, offset, 0 if data is None else len(data)))
+        self.logger.debug('start write on %s: offset %d, length %d' %
+                          (self.name, offset, 0 if data is None else len(data)))
 
         if data is None:
             return err_invalid_argument
@@ -125,7 +134,8 @@ class Device(Storage):
         return result
 
     def dump_device_tree(self, level=0):
-        print '%s-->%s (size: %d)' % ('  ' * level, self._name, self._size)
+        print('%s-->%s (size: %d %s)' %
+              ('  ' * level, self.name, self.size, self.info))
         level += 1
         for device in self._children:
             device.dump_device_tree(level)
