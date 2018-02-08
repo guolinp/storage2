@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
 import json
+
+from error import *
 from disk import FileDisk
 from raid import RaidX
 from lun import Lun
@@ -35,6 +37,9 @@ class BlockSystem(object):
             raid = RaidX(raid_name)
             for disk_name in disk_list:
                 raid.add_disk(self.disks[disk_name])
+            result = raid.build()
+            if not is_success(result):
+                raise RaidBuildError('Raid build error %d' % result)
             self.raids[raid_name] = raid
 
         # create luns

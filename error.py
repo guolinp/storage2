@@ -8,6 +8,9 @@ err_out_of_range = 1025
 err_read_data_fail = 1025
 err_write_data_fail = 1027
 err_not_implement = 1028
+err_disk_not_enough = 1029
+err_disk_too_more = 1030
+err_disk_be_bad = 1031
 
 # Error helper functions
 
@@ -47,6 +50,10 @@ class DeviceNoEnoughSpaceError(StorgeError):
 
 
 class FunctionalNotImplementError(StorgeError):
+    pass
+
+
+class RaidBuildError(StorgeError):
     pass
 
 
