@@ -1,16 +1,17 @@
 #!/usr/bin/python
 
-import block
 import struct
 
 from error import *
 from storage import Storage
+from block_system import BlockSystem
 
 BLOCK_SIZE = 4096
 FS_MAGIC_NUM = 0xA0B1C2D3
 
+
 class SuperBlock(object):
-    
+
     def __init__(self):
         # default values
         self.magic = FS_MAGIC_NUM
@@ -44,7 +45,8 @@ class SuperBlock(object):
     def load_from_block_cache(self, bc):
         sb_fmt = 'I' * 11
         sb_size_on_disk = 44
-        self.magic, self.sb_start_block, self.sb_blocks, self.inode_bitmap_start_block, self.inode_bitmap_blocks, self.data_bitmap_start_block, self.data_bitmap_blocks, self.inode_start_block, self.inode_blocks, self.data_start_block, self.data_blocks = struct.unpack(sb_fmt, bc.base[0:sb_size_on_disk])
+        self.magic, self.sb_start_block, self.sb_blocks, self.inode_bitmap_start_block, self.inode_bitmap_blocks, self.data_bitmap_start_block, self.data_bitmap_blocks, self.inode_start_block, self.inode_blocks, self.data_start_block, self.data_blocks = struct.unpack(
+            sb_fmt, bc.base[0:sb_size_on_disk])
 
     def flush_to_block_cache(self, bc):
         sb_fmt = 'I' * 11
@@ -105,7 +107,6 @@ class BlockCache(object):
         if not is_success(result):
             raise DeviceAccessError(
                 'flush data to device failed, error %d' % result)
-
 
 
 class FileSystem(Storage):
@@ -278,6 +279,7 @@ class FileSystem(Storage):
 
 
 class FsTool(object):
+
     @staticmethod
     def create_fs(name, device, size=0):
         return FileSystem(name, device, size, new=True)
@@ -286,9 +288,11 @@ class FsTool(object):
     def attach_fs(name, device):
         return FileSystem(name, device, 0, new=False)
 
-lun = block.get_default_lun()
 
-#fs = FsTool.create_fs('myfs', lun)
-fs = FsTool.attach_fs('myfs', lun)
-fs.sb.dump_super_block()
+if __name__ == "__main__":
+    bs = BlockSystem('system.json')
+    lun = bs.luns['LUN_0']
 
+    fs = FsTool.create_fs('myfs', lun)
+    # fs = FsTool.attach_fs('myfs', lun)
+    fs.sb.dump_super_block()

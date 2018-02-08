@@ -1,21 +1,21 @@
 {
   "luns": [
     {
-      "name": "LUN0",
+      "name": "LUN_0",
       "raids": [
-        "RAID0"
+        "RAID_0"
       ]
     },
     {
-      "name": "LUN1",
+      "name": "LUN_1",
       "raids": [
-        "RAID1"
+        "RAID_1"
       ]
     }
   ],
   "raids": [
     {
-      "name": "RAID0",
+      "name": "RAID_0",
       "disks": [
         "DISK_0",
         "DISK_1",
@@ -25,7 +25,7 @@
       ]
     },
     {
-      "name": "RAID1",
+      "name": "RAID_1",
       "disks": [
         "DISK_5",
         "DISK_6",
