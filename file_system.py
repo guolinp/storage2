@@ -7,14 +7,17 @@ from storage import Storage
 from block_system import BlockSystem
 
 BLOCK_SIZE = 4096
-FS_MAGIC_NUM = 0xA0B1C2D3
+FS_MAGIC_NUMBER = 0xA0B1C2D3
+INODE_MAGIC_NUMBER = 0x1A2B3C4D
+INVALID_BLOCK_NUMBER = 0xFFFFFFFF
+INODE_EMPTY_ENTRY = 0
 
 
 class SuperBlock(object):
 
     def __init__(self):
         # default values
-        self.magic = FS_MAGIC_NUM
+        self.magic = FS_MAGIC_NUMBER
         self.sb_start_block = 0
         self.sb_blocks = 1
         self.inode_bitmap_start_block = self.sb_start_block + self.sb_blocks
@@ -40,7 +43,7 @@ class SuperBlock(object):
 
     def is_valid(self):
         # a simple check
-        return self.magic == FS_MAGIC_NUM
+        return self.magic == FS_MAGIC_NUMBER
 
     def load_from_block_cache(self, bc):
         sb_fmt = 'I' * 11
@@ -71,7 +74,7 @@ class SuperBlock(object):
 
 class BlockCache(object):
 
-    def __init__(self, block=0xffffffff):
+    def __init__(self, block=INVALID_BLOCK_NUMBER):
         self.block = block
         self._array = bytearray(BLOCK_SIZE)
 
@@ -92,6 +95,7 @@ class BlockCache(object):
         self._array = bytearray(BLOCK_SIZE)
 
     def load_from_device(self, device):
+        assert_true(self.block != INVALID_BLOCK_NUMBER)
         offset_in_device = self.block * BLOCK_SIZE
         result, data = device.read(offset_in_device, BLOCK_SIZE)
         if not is_success(result):
@@ -101,12 +105,502 @@ class BlockCache(object):
         self._array = bytearray(data)
 
     def flush_to_device(self, device):
+        assert_true(self.block != INVALID_BLOCK_NUMBER)
         offset_in_device = self.block * BLOCK_SIZE
         data = str(self._array)
         result = device.write(data, offset_in_device)
         if not is_success(result):
             raise DeviceAccessError(
                 'flush data to device failed, error %d' % result)
+
+
+class Inode(Storage):
+    DIR_INODE = 0
+    FILE_INODE = 1
+    BAD_INODE = 2
+
+    def __init__(self, fs, block, load=True):
+        super(Inode, self).__init__()
+        self._fs = fs
+        self._magic = INODE_MAGIC_NUMBER
+        self._inode_type = Inode.BAD_INODE
+        self._parent = INVALID_BLOCK_NUMBER
+        self._block = block
+        self._cache = BlockCache()
+        if load:
+            self.load_inode()
+
+    @property
+    def inode_type(self):
+        return self._inode_type
+
+    @property
+    def inode_type_str(self):
+        if self._inode_type == Inode.DIR_INODE:
+            return 'Dir Inode'
+        elif self._inode_type == Inode.FILE_INODE:
+            return 'File Inode'
+        else:
+            return 'Bad Inode'
+
+    @property
+    def parent(self):
+        return self._parent
+
+    @parent.setter
+    def parent(self, parent):
+        self._parent = parent
+
+    @property
+    def block(self):
+        return self._block
+
+    def _parse_inode(self):
+        return True
+
+    def _fill_inode(self):
+        return True
+
+    def _load_inode(self):
+        assert_true(self.block != INVALID_BLOCK_NUMBER)
+        self._cache.block = self._block
+        self._cache.load_from_device(self._fs.device)
+
+    def _flush_inode(self):
+        assert_true(self.block != INVALID_BLOCK_NUMBER)
+        self._cache.block = self._block
+        self._cache.flush_to_device(self._fs.device)
+
+    def load_inode(self):
+        self._load_inode()
+        self._parse_inode()
+
+    def flush_inode(self):
+        self._fill_inode()
+        self._flush_inode()
+
+    def dump_inode(self):
+        print('\ninode (0x%0x)' % self.block)
+        print('magic        : 0x%x' % self._magic)
+        print('type         : %s' % self.inode_type_str)
+        print('parent       : 0x%x' % self.parent)
+
+# Dir Inode
+#
+#        0 :  Magic number
+#        4 :  Byte[0]: inode type, byte[1..3]: reserved
+#        8 :  Parent inode number
+#       12 :  Next inode number
+#    16~31 :  Reserved
+#  32~4095 :  Inode number(dir/file)
+
+
+class DirInode(Inode):
+
+    def __init__(self, fs, block, load=True):
+        # define memebers wihch may be used by super __init__
+        self._inode_type = Inode.DIR_INODE
+        self._entries = None
+        self._next_inode = INVALID_BLOCK_NUMBER
+        # call super class init
+        super(DirInode, self).__init__(fs, block, load)
+
+    @property
+    def next_inode(self):
+        return self._next_inode
+
+    @next_inode.setter
+    def next_inode(self, next_inode):
+        self._next_inode = next_inode
+
+    def _entry_offset_in_inode(self):
+        return 32
+
+    @property
+    def max_entry_number(self):
+        return (BLOCK_SIZE - 32) / 4
+
+    def current_entry_count(self):
+        result = 0
+        if self._entries:
+            for entry in self._entries:
+                if entry != INODE_EMPTY_ENTRY:
+                    result += 1
+        return result
+
+    def _is_valid_entry_index(self, index):
+        if not self._entries:
+            return False
+        return index in range(0, len(self._entries))
+
+    def alloc_entry(self):
+        for index, entry in enumerate(self._entries):
+            if entry == INODE_EMPTY_ENTRY:
+                return index
+        return -1
+
+    def is_free(self, index):
+        assert_true(self._is_valid_entry_index(index))
+        return self._entries[index] == INODE_EMPTY_ENTRY
+
+    def set_entry(self, index, inode_number):
+        assert_true(self._is_valid_entry_index(index))
+        self._entries[index] = inode_number
+
+    def get_entry(self, index):
+        assert_true(self._is_valid_entry_index(index))
+        return self._entries[index]
+
+    def free_entry(self, index):
+        self.set_entry(index, INODE_EMPTY_ENTRY)
+
+    def _parse_inode(self):
+        # header
+        header_size = 4 + 1 * 4 + 4 + 4
+        header_fmt = 'IBBBBII'
+        header = struct.unpack(header_fmt, self._cache.base[0:header_size])
+        self._magic = header[0]
+        self._inode_type = header[1]
+        self._parent = header[5]
+        self._next_inode = header[6]
+
+        # entries
+        entries_start = self._entry_offset_in_inode()
+        entries_fmt = 'I' * self.max_entry_number
+        entries = struct.unpack(entries_fmt, self._cache.base[entries_start:])
+        self._entries = list(entries)
+
+    def _fill_inode(self):
+        self._magic = INODE_MAGIC_NUMBER
+        # header
+        header_fmt = 'IBBBBII'
+        header_size = 4 + 1 * 4 + 4 + 4
+        self._cache.base[0:header_size] = struct.pack(
+            header_fmt, self._magic, self._inode_type, 0, 0, 0, self._parent, self._next_inode)
+
+        # entries
+        entries_fmt = 'I'
+        entries_start = self._entry_offset_in_inode()
+        if not self._entries:
+            self._entries = [0 for i in range(0, self.max_entry_number)]
+        for index, value in enumerate(self._entries):
+            start = entries_start + 4 * index
+            end = start + 4
+            self._cache.base[start:end] = struct.pack(entries_fmt, value)
+
+    def dump_inode(self, detail=False):
+        super(DirInode, self).dump_inode()
+        print('next_inode   : 0x%x' % self.next_inode)
+        print('entry count  : %d' % self.current_entry_count())
+        if detail:
+            print('entries')
+            for index in range(0, self.max_entry_number):
+                print('    %4d : 0x%08x' % (index, self.get_entry(index)))
+
+# File Inode
+#
+#        0 :  Magic number
+#        4 :  byte[0]: inode type, byte[1..3]: reserved
+#        8 :  Parent inode number
+#       12 :  Size of file
+#    16~31 :  Reserved
+#    32~95 :  File name(max 64 bytes)
+#   96~125 :  Data Block number(8 entries)
+#      128 :  Indirect Block 1 number
+#      132 :  Indirect Block 2 number
+# 136~4095 : Reserved
+
+
+class FileInode(Inode):
+
+    def __init__(self, fs, block, load=True):
+        # define memebers wihch may be used by super
+        self._size = 0
+        self._name = ''
+        self._data_block_entries = []
+        self._indirect_block1_entries = []
+        self._indirect_block2_entries = []
+        # call super class init
+        super(FileInode, self).__init__(fs, block, load)
+        # memebers which can not be changed by super class
+        self._inode_type = Inode.FILE_INODE
+
+    @property
+    def size(self):
+        return self._size
+
+    # below defines reference the design
+    @property
+    def max_name_length(self):
+        return 64
+
+    def _file_name_offset_in_inode(self):
+        return 32
+
+    def _data_block_entry_offset_in_inode(self):
+        return 96
+
+    def _max_data_block_entry_number(self):
+        return 8
+
+    def _indirect_block1_entry_offset_in_inode(self):
+        return 128
+
+    def _max_indirect_block1_entry_number(self):
+        return 1
+
+    def _indirect_block2_entry_offset_in_inode(self):
+        return 132
+
+    def _max_indirect_block2_entry_number(self):
+        return 1
+
+    def _is_valid_data_block_entry_index(self, index):
+        return 0 <= index < len(self._data_block_entries)
+
+    def _is_valid_indirect_block1_entry_index(self, index):
+        return 0 <= index < len(self._indirect_block1_entries)
+
+    def _is_valid_indirect_block2_entry_index(self, index):
+        return 0 <= index < len(self._indirect_block2_entries)
+
+    # data block entries
+    def set_data_block_entry(self, index, block):
+        assert_true(self._is_valid_data_block_entry_index(index))
+        self._data_block_entries[index] = block
+
+    def get_data_block_entry(self, index):
+        assert_true(self._is_valid_data_block_entry_index(index))
+        return self._data_block_entries[index]
+
+    def free_data_block_entry(self, index):
+        self.set_data_block_entry(index, INODE_EMPTY_ENTRY)
+
+    # indirect block1 entries
+    def set_indirect_block1_entry(self, index, block):
+        assert_true(self._is_valid_indirect_block1_entry_index(index))
+        self._indirect_block1_entries[index] = block
+
+    def get_indirect_block1_entry(self, index):
+        assert_true(self._is_valid_indirect_block1_entry_index(index))
+        return self._indirect_block1_entries[index]
+
+    def free_indirect_block1_entry(self, index):
+        self.set_indirect_block1_entry(index, INODE_EMPTY_ENTRY)
+
+    # indirect block2 entries
+    def set_indirect_block2_entry(self, index, block):
+        assert_true(self._is_valid_indirect_block2_entry_index(index))
+        self._indirect_block2_entries[index] = block
+
+    def get_indirect_block2_entry(self, index):
+        assert_true(self._is_valid_indirect_block2_entry_index(index))
+        return self._indirect_block2_entries[index]
+
+    def free_indirect_block2_entry(self, index):
+        self.set_indirect_block2_entry(index, INODE_EMPTY_ENTRY)
+
+    def _parse_inode(self):
+        # header
+        header_size = 4 + 1 * 4 + 4 + 4
+        header_fmt = 'IBBBBII'
+        header = struct.unpack(header_fmt, self._cache.base[0:header_size])
+        self._magic = header[0]
+        self._inode_type = header[1]
+        self._parent = header[5]
+        self._size = header[6]
+
+        # name
+        name_start = self._file_name_offset_in_inode()
+        name_end = name_start + self.max_name_length
+        name_fmt = 'B' * self.max_name_length
+        self.name = struct.unpack(
+            name_fmt, self._cache.base[name_start:name_end])
+
+        # data block entries
+        entries_start = self._data_block_entry_offset_in_inode()
+        entries_end = entries_start + 4 * self._max_data_block_entry_number()
+        entries_fmt = 'I' * self._max_data_block_entry_number()
+        entries = struct.unpack(
+            entries_fmt, self._cache.base[entries_start:entries_end])
+        self._data_block_entries = list(entries)
+
+        # indirect block1 entries
+        entries_start = self._indirect_block1_entry_offset_in_inode()
+        entries_end = entries_start + 4 * \
+            self._max_indirect_block1_entry_number()
+        entries_fmt = 'I' * self._max_indirect_block1_entry_number()
+        entries = struct.unpack(
+            entries_fmt, self._cache.base[entries_start:entries_end])
+        self._indirect_block1_entries = list(entries)
+
+        # indirect block2 entries
+        entries_start = self._indirect_block2_entry_offset_in_inode()
+        entries_end = entries_start + 4 * \
+            self._max_indirect_block2_entry_number()
+        entries_fmt = 'I' * self._max_indirect_block2_entry_number()
+        entries = struct.unpack(
+            entries_fmt, self._cache.base[entries_start:entries_end])
+        self._indirect_block2_entries = list(entries)
+
+    def _fill_inode(self):
+        self._magic = INODE_MAGIC_NUMBER
+        # header
+        header_fmt = 'IBBBBII'
+        header_size = 4 + 1 * 4 + 4 + 4
+        self._cache.base[0:header_size] = struct.pack(
+            header_fmt, self._magic, self._inode_type, 0, 0, 0, self._parent, self._size)
+
+        # data block entries
+        entries_fmt = 'I'
+        entries_start = self._data_block_entry_offset_in_inode()
+        if not self._data_block_entries:
+            self._data_block_entries = [
+                0 for i in range(0, self._max_data_block_entry_number())]
+        for index, value in enumerate(self._data_block_entries):
+            start = entries_start + 4 * index
+            end = start + 4
+            self._cache.base[start:end] = struct.pack(entries_fmt, value)
+
+        # indirect block1 entries
+        entries_fmt = 'I'
+        entries_start = self._indirect_block1_entry_offset_in_inode()
+        if not self._indirect_block1_entries:
+            self._indirect_block1_entries = [
+                0 for i in range(0, self._max_indirect_block1_entry_number())]
+        for index, value in enumerate(self._indirect_block1_entries):
+            start = entries_start + 4 * index
+            end = start + 4
+            self._cache.base[start:end] = struct.pack(entries_fmt, value)
+
+        # indirect block1 entries
+        entries_fmt = 'I'
+        entries_start = self._indirect_block2_entry_offset_in_inode()
+        if not self._indirect_block2_entries:
+            self._indirect_block2_entries = [
+                0 for i in range(0, self._max_indirect_block2_entry_number())]
+        for index, value in enumerate(self._indirect_block2_entries):
+            start = entries_start + 4 * index
+            end = start + 4
+            self._cache.base[start:end] = struct.pack(entries_fmt, value)
+
+    def dump_inode(self):
+        super(FileInode, self).dump_inode()
+        print('size         : 0x%x' % self.size)
+        print('data block entries')
+        for index in range(0, self._max_data_block_entry_number()):
+            print('    %4d : 0x%08x' %
+                  (index, self.get_data_block_entry(index)))
+        print('indirect block1 entries')
+        for index in range(0, self._max_indirect_block1_entry_number()):
+            print('    %4d : 0x%08x' %
+                  (index, self.get_indirect_block1_entry(index)))
+        print('indirect block2 entries')
+        for index in range(0, self._max_indirect_block2_entry_number()):
+            print('    %4d : 0x%08x' %
+                  (index, self.get_indirect_block2_entry(index)))
+
+
+class IndirectBlock(Storage):
+
+    def __init__(self, fs, block, load=True):
+        super(IndirectBlock, self).__init__()
+        self._fs = fs
+        self._block = block
+        self._entries = []
+        self._cache = BlockCache()
+        if load:
+            self.load_indirect_block()
+
+    @property
+    def block(self):
+        return self._block
+
+    @property
+    def max_entry_number(self):
+        return BLOCK_SIZE / 4
+
+    @property
+    def current_entry_count(self):
+        result = 0
+        if self._entries:
+            for entry in self._entries:
+                if entry != INODE_EMPTY_ENTRY:
+                    result += 1
+        return result
+
+    def _is_valid_entry_index(self, index):
+        return 0 <= index < len(self._entries)
+
+    def load_indirect_block(self):
+        assert_true(self.block != INVALID_BLOCK_NUMBER)
+        self._cache.block = self._block
+        self._cache.load_from_device(self._fs.device)
+
+        entries_fmt = 'I' * self.max_entry_number
+        entries = struct.unpack(entries_fmt, self._cache.base)
+        self._entries = list(entries)
+
+    def flush_indirect_block(self):
+        assert_true(self.block != INVALID_BLOCK_NUMBER)
+
+        entries_fmt = 'I'
+        if not self._entries:
+            self._entries = [0 for i in range(0, self.max_entry_number)]
+        for index, value in enumerate(self._entries):
+            start = 4 * index
+            end = start + 4
+            self._cache.base[start:end] = struct.pack(entries_fmt, value)
+
+        self._cache.block = self._block
+        self._cache.flush_to_device(self._fs.device)
+
+    def alloc_entry(self):
+        if self._entries:
+            for index, entry in enumerate(self._entries):
+                if entry == INODE_EMPTY_ENTRY:
+                    return index
+        return -1
+
+    def is_free(self, index):
+        assert_true(self._is_valid_entry_index(index))
+        return self._entries[index] == INODE_EMPTY_ENTRY
+
+    def set_entry(self, index, block):
+        assert_true(self._is_valid_entry_index(index))
+        self._entries[index] = block
+
+    def get_entry(self, index):
+        assert_true(self._is_valid_entry_index(index))
+        return self._entries[index]
+
+    def free_entry(self, index):
+        self.set_entry(index, INODE_EMPTY_ENTRY)
+
+    def dump_indirect_block(self, detail=False):
+        print('\nindirect block (0x%x)' % self.block)
+        print('entry count : %d' % self.current_entry_count)
+        if detail:
+            print('entries')
+            for index in range(0, self.max_entry_number):
+                if not self.is_free(index):
+                    print('    %4d : 0x%08x' % (index, self.get_entry(index)))
+
+# Indirect Block 1
+#
+#   0~4095 :  Data Block number
+
+
+class IndirectBlock1(IndirectBlock):
+    pass
+
+# Indirect Block 2
+#
+#   0~4095 :  Indirect Block 1 number
+
+
+class IndirectBlock2(IndirectBlock):
+    pass
 
 
 class FileSystem(Storage):
@@ -278,7 +772,7 @@ class FileSystem(Storage):
         raise FunctionalNotImplementError('write_file')
 
 
-class FsTool(object):
+class FsFactory(object):
 
     @staticmethod
     def create_fs(name, device, size=0):
@@ -290,9 +784,39 @@ class FsTool(object):
 
 
 if __name__ == "__main__":
+
     bs = BlockSystem('system.json')
     lun = bs.luns['LUN_0']
 
-    fs = FsTool.create_fs('myfs', lun)
-    # fs = FsTool.attach_fs('myfs', lun)
+    fs = FsFactory.create_fs('myfs', lun)
+    # fs = FsFactory.attach_fs('myfs', lun)
     fs.sb.dump_super_block()
+
+    inode = DirInode(fs, 73)
+    inode.dump_inode()
+#    inode.next_inode = 1200
+#    index = inode.alloc_entry()
+#    print 'free index %d' % index
+#    inode.set_entry(index, 1300)
+#    inode.flush_inode()
+#    inode.dump_inode()
+
+    finode = FileInode(fs, 768)
+    finode.dump_inode()
+#    for i in range(0,8):
+#        finode.set_data_block_entry(i,i*128)
+#    finode.set_indirect_block1_entry(0,110)
+#    finode.set_indirect_block2_entry(0,120)
+#    finode.flush_inode()
+#    finode.dump_inode()
+    ib = IndirectBlock1(fs, 1024)
+    index = ib.alloc_entry()
+    ib.set_entry(index, 32768)
+    ib.dump_indirect_block(True)
+    ib.flush_indirect_block()
+
+    ib = IndirectBlock2(fs, 1025)
+    index = ib.alloc_entry()
+    ib.set_entry(index, 32768)
+    ib.dump_indirect_block(True)
+    ib.flush_indirect_block()

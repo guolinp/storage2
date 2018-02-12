@@ -97,13 +97,13 @@ def assert_is_not_same(instance1, instance2):
     assert(instance1 is not instance2)
 
 
-def assert_int_equal(instance1, instance1):
+def assert_int_equal(instance1, instance2):
     assert_is_int(instance1)
     assert_is_int(instance2)
     assert(instance1 == instance2)
 
 
-def assert_float_equal(instance1, instance1):
+def assert_float_equal(instance1, instance2):
     assert_is_float(instance1)
     assert_is_float(instance2)
     assert(instance1 == instance2)
