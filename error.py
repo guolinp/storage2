@@ -136,6 +136,10 @@ class InvalidArgumentError(StorgeError):
     pass
 
 
+class NeedToBeImplementedError(StorgeError):
+    pass
+
+
 class DeviceNotFoundError(StorgeError):
     pass
 

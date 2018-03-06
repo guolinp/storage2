@@ -4,7 +4,7 @@ import json
 
 from error import *
 from disk import FileDisk
-from raid import RaidX
+from raid import *
 from lun import Lun
 
 
@@ -30,11 +30,17 @@ class BlockSystem(object):
             self.disks[disk_name] = FileDisk(disk_name, disk_pathname)
 
         # create raids
+        raid_class = {'RAID0': Raid0, 'RAID1': Raid1,
+                      'RAID01': Raid01, 'RAID10': Raid10, 'RAID5': Raid5}
         raid_conf = sys_conf['raids']
         for conf in raid_conf:
             raid_name = conf['name']
+            raid_type = conf['type']
             disk_list = conf['disks']
-            raid = RaidX(raid_name)
+            raid_constructor = raid_class.get(raid_type)
+            if raid_constructor is None:
+                raise InvalidArgumentError('Bad raid type: %s' % raid_type)
+            raid = raid_constructor(raid_name)
             for disk_name in disk_list:
                 raid.add_disk(self.disks[disk_name])
             result = raid.build()

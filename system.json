@@ -3,78 +3,87 @@
     {
       "name": "LUN_0",
       "raids": [
-        "RAID_0"
+        "LUN_0_RAID_0",
+        "LUN_0_RAID_1"
       ]
     },
     {
       "name": "LUN_1",
       "raids": [
-        "RAID_1"
+        "LUN_1_RAID_0"
       ]
     }
   ],
   "raids": [
     {
-      "name": "RAID_0",
+      "name": "LUN_0_RAID_0",
+      "type": "RAID0",
       "disks": [
-        "DISK_0",
-        "DISK_1",
-        "DISK_2",
-        "DISK_3",
-        "DISK_4"
+        "FILE_DISK_0",
+        "FILE_DISK_1",
+        "FILE_DISK_2",
+        "FILE_DISK_3"
       ]
     },
     {
-      "name": "RAID_1",
+      "name": "LUN_0_RAID_1",
+      "type": "RAID0",
       "disks": [
-        "DISK_5",
-        "DISK_6",
-        "DISK_7",
-        "DISK_8",
-        "DISK_9"
+        "FILE_DISK_4",
+        "FILE_DISK_5",
+        "FILE_DISK_6"
+      ]
+    },
+    {
+      "name": "LUN_1_RAID_0",
+      "type": "RAID0",
+      "disks": [
+        "FILE_DISK_7",
+        "FILE_DISK_8",
+        "FILE_DISK_9"
       ]
     }
   ],
   "disks": [
     {
-      "name": "DISK_0",
-      "pathname": "DISK_0"
+      "name": "FILE_DISK_0",
+      "pathname": "disks/disk_0"
     },
     {
-      "name": "DISK_1",
-      "pathname": "DISK_1"
+      "name": "FILE_DISK_1",
+      "pathname": "disks/disk_1"
     },
     {
-      "name": "DISK_2",
-      "pathname": "DISK_2"
+      "name": "FILE_DISK_2",
+      "pathname": "disks/disk_2"
     },
     {
-      "name": "DISK_3",
-      "pathname": "DISK_3"
+      "name": "FILE_DISK_3",
+      "pathname": "disks/disk_3"
     },
     {
-      "name": "DISK_4",
-      "pathname": "DISK_4"
+      "name": "FILE_DISK_4",
+      "pathname": "disks/disk_4"
     },
     {
-      "name": "DISK_5",
-      "pathname": "DISK_5"
+      "name": "FILE_DISK_5",
+      "pathname": "disks/disk_5"
     },
     {
-      "name": "DISK_6",
-      "pathname": "DISK_6"
+      "name": "FILE_DISK_6",
+      "pathname": "disks/disk_6"
     },
     {
-      "name": "DISK_7",
-      "pathname": "DISK_7"
+      "name": "FILE_DISK_7",
+      "pathname": "disks/disk_7"
     },
     {
-      "name": "DISK_8",
-      "pathname": "DISK_8"
+      "name": "FILE_DISK_8",
+      "pathname": "disks/disk_8"
     },
     {
-      "name": "DISK_9",
-      "pathname": "DISK_9"
+      "name": "FILE_DISK_9",
+      "pathname": "disks/disk_9"
     }
   ]
 }

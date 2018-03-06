@@ -56,7 +56,7 @@ class FileDisk(Disk):
         self.logger.debug('start read on %s, offset %d, length %d' %
                           (self.name, offset, length))
 
-        if not self._is_valid_range(offset, length):
+        if not self.is_valid_range(offset, length):
             self.logger.error(
                 'Invalid argument: offset %d, length %d' % (offset, length))
             return err_invalid_argument, data
@@ -84,7 +84,7 @@ class FileDisk(Disk):
             self.logger.error('Invalid argument: data is none')
             return err_invalid_argument
 
-        if self._is_valid_range(offset, len(data)):
+        if self.is_valid_range(offset, len(data)):
             try:
                 fileno = os.open(self._pathname, os.O_RDWR)
                 with contextlib.closing(mmap.mmap(fileno, 0)) as m:
